@@ -79,7 +79,7 @@ def median(values):
         median_indices = [length//2-1, length//2]
 
     values = sorted(values)
-    return sum([values[i] for i in median_indices]) / len(median_indices)
+    return sum(values[i] for i in median_indices) / len(median_indices)
 
 
 def test_median():
@@ -104,17 +104,8 @@ def histogram(stream, minimum=None, maximum=None, buckets=None, custbuckets=None
         data = list(stream)
     else:
         data = stream
-    bucket_scale = 1
-
-    if minimum:
-        min_v = minimum
-    else:
-        min_v = min(data)
-    if maximum:
-        max_v = maximum
-    else:
-        max_v = max(data)
-
+    min_v = minimum or min(data)
+    max_v = maximum or max(data)
     if not max_v > min_v:
         raise ValueError(f'max must be > min. max:{max_v} min:{min_v}')
     diff = max_v - min_v
@@ -168,9 +159,7 @@ def histogram(stream, minimum=None, maximum=None, buckets=None, custbuckets=None
                 break
 
     # auto-pick the hash scale
-    if max(bucket_counts) > 75:
-        bucket_scale = int(max(bucket_counts) / 75)
-
+    bucket_scale = int(max(bucket_counts) / 75) if max(bucket_counts) > 75 else 1
     return HistogramResult(
         samples=samples,
         min_v=min_v,
@@ -217,9 +206,7 @@ class HistogramResult:
             bucket_min = bucket_max
             bucket_max = self.boundaries[bucket]
             bucket_count = self.bucket_counts[bucket]
-            star_count = 0
-            if bucket_count:
-                star_count = bucket_count // self.bucket_scale
+            star_count = bucket_count // self.bucket_scale if bucket_count else 0
             output.append(f"{bucket_min:10.4f} - {bucket_max:10.4f} [{bucket_count:8d}]: {'∎' * star_count}")
 
         return '\n'.join(output)
@@ -324,9 +311,7 @@ class Histogram:
             bucket_min = bucket_max
             bucket_max = self.boundaries[bucket]
             bucket_count = self.bucket_counts[bucket]
-            star_count = 0
-            if bucket_count:
-                star_count = bucket_count // bucket_scale
+            star_count = bucket_count // bucket_scale if bucket_count else 0
             output.append(f"{bucket_min:10.4f} - {bucket_max:10.4f} [{bucket_count:8d}]: {'∎' * star_count}")
 
         return '\n'.join(output)

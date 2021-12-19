@@ -147,8 +147,7 @@ def conv2D_generative_bayesian(inputs, filters, step,
         b = _sampler(b_mu, b_log_sigma, step, sampler_hyperparams)
         W_normed = _sampler(W_mu, W_log_sigma, step, sampler_hyperparams)
 
-        KL_list = []
-        KL_list.append(_KLD_standard_normal(g_mu, g_log_sigma))
+        KL_list = [_KLD_standard_normal(g_mu, g_log_sigma)]
         KL_list.append(_KLD_standard_normal(b_mu, b_log_sigma))
         KL_list.append(_KLD_standard_normal(W_mu, W_log_sigma))
 
@@ -714,7 +713,7 @@ def convnet_1D_generative_standard(inputs, inner_channels, mask, widths, dilatio
 
                 weight_cost_list += weight_cost
 
-                if dropout_type == 'inter' or dropout_type == 'final':
+                if dropout_type in ['inter', 'final']:
                     delta_layer = tf.nn.dropout(delta_layer, dropout_p)
 
                 elif dropout_type == 'gaussian':

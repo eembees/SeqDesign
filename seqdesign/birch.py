@@ -241,11 +241,6 @@ class _CFNode(object):
                     self.subclusters_[closest_index].centroid_
                 self.init_sq_norm_[closest_index] = \
                     self.subclusters_[closest_index].sq_norm_
-                return False
-
-            # things not too good. we need to redistribute the subclusters in
-            # our child node, and add a new subcluster in the parent
-            # subcluster to accommodate the new child.
             else:
                 new_subcluster1, new_subcluster2 = _split_node(
                     closest_subcluster.child_, threshold, branching_factor)
@@ -254,9 +249,8 @@ class _CFNode(object):
 
                 if len(self.subclusters_) > self.branching_factor:
                     return True
-                return False
+            return False
 
-        # good to go!
         else:
             merged = closest_subcluster.merge_subcluster(
                 subcluster, self.threshold)
@@ -475,9 +469,8 @@ class BirchIter:
         self.dummy_leaf_.next_leaf_ = self.root_
         self.root_.prev_leaf_ = self.dummy_leaf_
 
-        counter = 0
         # Iterate through all the sequences
-        for name,kmer_data_list in data_helper.seq_name_to_kmer_data_lists.items():
+        for counter, (name, kmer_data_list) in enumerate(data_helper.seq_name_to_kmer_data_lists.items()):
             sample = n_features * [0.]
             for idx_kmer,count in kmer_data_list:
                 sample[idx_kmer] = count
@@ -496,8 +489,6 @@ class BirchIter:
                 self.root_.append_subcluster(new_subcluster2)
             if counter % 1000 == 0:
                 print(counter, flush=True)
-            counter += 1
-
         centroids = np.concatenate([
             leaf.centroids_ for leaf in self._get_leaves()])
         self.subcluster_centers_ = centroids
@@ -570,34 +561,31 @@ class BirchIter:
         labels : ndarray, shape(n_samples)
             Labelled data.
         """
-        OUTPUT = open(output_name, 'w')
+        with open(output_name, 'w') as OUTPUT:
+            completed = 0
+            for i in range(0,len(data_helper.seq_name_list),minibatch_size):
 
-        completed = 0
-        for i in range(0,len(data_helper.seq_name_list),minibatch_size):
+                batch_names = data_helper.seq_name_list[i:i+minibatch_size]
 
-            batch_names = data_helper.seq_name_list[i:i+minibatch_size]
+                minibatch_kmer_data = np.zeros((len(batch_names),data_helper.kmer_feat_num))
 
-            minibatch_kmer_data = np.zeros((len(batch_names),data_helper.kmer_feat_num))
+                for j,name in enumerate(batch_names):
+                    kmer_data_list = data_helper.seq_name_to_kmer_data_lists[name]
+                    for k_kmer,count in kmer_data_list:
+                        minibatch_kmer_data[j,k_kmer] = count
 
-            for j,name in enumerate(batch_names):
-                kmer_data_list = data_helper.seq_name_to_kmer_data_lists[name]
-                for k_kmer,count in kmer_data_list:
-                    minibatch_kmer_data[j,k_kmer] = count
+                reduced_distance = np.dot(minibatch_kmer_data, self.subcluster_centers_.T)
+                reduced_distance *= -2
+                reduced_distance += self._subcluster_norms
 
-            reduced_distance = np.dot(minibatch_kmer_data, self.subcluster_centers_.T)
-            reduced_distance *= -2
-            reduced_distance += self._subcluster_norms
+                cluster_num = np.argmin(reduced_distance, axis=1)
+                cluster_dist = np.min(reduced_distance, axis=1)
 
-            cluster_num = np.argmin(reduced_distance, axis=1)
-            cluster_dist = np.min(reduced_distance, axis=1)
+                for j, name in enumerate(batch_names):
+                    OUTPUT.write(f'{name},{cluster_num[j]},{cluster_dist[j]}\n')
 
-            for j, name in enumerate(batch_names):
-                OUTPUT.write(f'{name},{cluster_num[j]},{cluster_dist[j]}\n')
-
-            completed += len(batch_names)
-            print(completed, flush=True)
-
-        OUTPUT.close()
+                completed += len(batch_names)
+                print(completed, flush=True)
 
     def transform(self, X):
         """
@@ -639,7 +627,7 @@ class NanobodyDataBirchCluster:
         cdr3_alphabet = 'ACDEFGHIKLMNPQRSTVWY'
         kmer_to_idx = {}
         counter = 0
-        kmer_list = [aa for aa in cdr3_alphabet]
+        kmer_list = list(cdr3_alphabet)
         for aa in cdr3_alphabet:
             for bb in cdr3_alphabet:
                 kmer_list.append(aa+bb)
@@ -681,13 +669,14 @@ class NanobodyDataBirchCluster:
 
                 kmer_data_list = line_list
                 kmer_data_list = [val.split(':') for val in kmer_data_list]
-                final_kmer_data_list = []
-
                 # calculate the norm first and save that so I don't have to do it redundantly
                 norm_val = sqrt(sum(int(count) ** 2 for kmer, count in kmer_data_list))
 
-                for kmer,count in kmer_data_list:
-                    final_kmer_data_list.append((kmer_to_idx[kmer],float(count)/norm_val))
+                final_kmer_data_list = [
+                    (kmer_to_idx[kmer], float(count) / norm_val)
+                    for kmer, count in kmer_data_list
+                ]
+
 
                 self.seq_name_to_kmer_data_lists[name] = final_kmer_data_list
                 self.seq_name_to_continuous_feat[name] = [length, hydro_ph7, pI, mw]

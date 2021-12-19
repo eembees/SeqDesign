@@ -215,11 +215,10 @@ def main(working_dir='.'):
 
     if working_dir != '.':
         os.makedirs(f'{working_dir}/complete/', exist_ok=True)
-        OUTPUT = open(f'{working_dir}/complete/{folder_time}.txt', 'w')
-        OUTPUT.write(f"STEPS COMPLETED: {int(global_step)}")
-        if max_gpu_mem_used is not None:
-            OUTPUT.write(f"Max GPU memory used: {max_gpu_mem_used}")
-        OUTPUT.close()
+        with open(f'{working_dir}/complete/{folder_time}.txt', 'w') as OUTPUT:
+            OUTPUT.write(f"STEPS COMPLETED: {int(global_step)}")
+            if max_gpu_mem_used is not None:
+                OUTPUT.write(f"Max GPU memory used: {max_gpu_mem_used}")
 
 
 if __name__ == "__main__":

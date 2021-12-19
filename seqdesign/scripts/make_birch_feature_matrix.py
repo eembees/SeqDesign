@@ -88,7 +88,7 @@ molecular_weight  = {"A":89.1,
 
 alphabet = 'ACDEFGHIKLMNPQRSTVWY'
 
-kmer_list = [aa for aa in alphabet]
+kmer_list = list(alphabet)
 for aa in alphabet:
     for bb in alphabet:
         kmer_list.append(aa+bb)
@@ -149,7 +149,7 @@ def make_birch_hash_matrix(input_fa, output_csv):
 
         kmer_len = 1
         num_chunks = (len(seq) - kmer_len) + 1
-        for idx in range(0, num_chunks):
+        for idx in range(num_chunks):
             kmer = seq[idx:idx + kmer_len]
             if kmer in kmer_counts:
                 kmer_counts[kmer] += 1
@@ -158,7 +158,7 @@ def make_birch_hash_matrix(input_fa, output_csv):
 
         kmer_len = 2
         num_chunks = (len(seq) - kmer_len) + 1
-        for idx in range(0, num_chunks):
+        for idx in range(num_chunks):
             kmer = seq[idx:idx + kmer_len]
             if kmer in kmer_counts:
                 kmer_counts[kmer] += 1
@@ -167,15 +167,14 @@ def make_birch_hash_matrix(input_fa, output_csv):
 
         kmer_len = 3
         num_chunks = (len(seq) - kmer_len) + 1
-        for idx in range(0, num_chunks):
+        for idx in range(num_chunks):
             kmer = seq[idx:idx + kmer_len]
             if kmer in kmer_counts:
                 kmer_counts[kmer] += 1
             else:
                 kmer_counts[kmer] = 1
 
-        out_features = feature_list + [f'{key}:{val}' for key, val in kmer_counts.items()]
-        return out_features
+        return feature_list + [f'{key}:{val}' for key, val in kmer_counts.items()]
 
     with open(input_fa, 'r') as INPUT, open(output_csv, 'w') as OUTPUT:
         OUTPUT.write(",".join(header_list) + '\n')

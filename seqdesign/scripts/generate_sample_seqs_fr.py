@@ -83,13 +83,16 @@ def main():
         grep_path = f'{sess_name}.ckpt-{args.checkpoint}.*'
         sess_namedir = f"{working_dir}/sess/{sess_name}/{sess_name}.ckpt-{args.checkpoint}"
 
-    if not glob.glob(glob_path) and aws_util:
-        if not aws_util.s3_get_file_grep(
+    if (
+        not glob.glob(glob_path)
+        and aws_util
+        and not aws_util.s3_get_file_grep(
             f'sess/{sess_name}',
             f'{working_dir}/sess/{sess_name}',
             grep_path,
-        ):
-            raise Exception("Could not download session files from S3.")
+        )
+    ):
+        raise Exception("Could not download session files from S3.")
 
     legacy_version = model.AutoregressiveFR.get_checkpoint_legacy_version(sess_namedir)
     dims = {'alphabet': len(data_helper.alphabet)}
@@ -178,19 +181,18 @@ def main():
                     # print("completed!")
                     complete = True
 
-            OUTPUT = open(output_filename, "a")
-            for idx_seq in range(batch_size):
-                batch_seq = input_seq_list[idx_seq]
-                out_seq = ""
-                end_seq = False
-                for idx_aa, aa in enumerate(batch_seq):
-                    if idx_aa != 0:
-                        if end_seq is False:
-                            out_seq += aa
-                        if aa == "*":
-                            end_seq = True
-                OUTPUT.write(f">{int(batch_size*i+idx_seq)}\n{out_seq}\n")
-            OUTPUT.close()
+            with open(output_filename, "a") as OUTPUT:
+                for idx_seq in range(batch_size):
+                    batch_seq = input_seq_list[idx_seq]
+                    out_seq = ""
+                    end_seq = False
+                    for idx_aa, aa in enumerate(batch_seq):
+                        if idx_aa != 0:
+                            if not end_seq:
+                                out_seq += aa
+                            if aa == "*":
+                                end_seq = True
+                    OUTPUT.write(f">{int(batch_size*i+idx_seq)}\n{out_seq}\n")
             print(f"Batch {i+1} done in {time.time()-start} s")
 
     if aws_util:

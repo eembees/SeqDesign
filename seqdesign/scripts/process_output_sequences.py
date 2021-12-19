@@ -41,7 +41,7 @@ def main():
             if chunk == "":
                 counter += 1
             else:
-                for k in range(len(chunk)):
+                for _ in range(len(chunk)):
                     counter += 1
 
                     if cdr_count == 3:

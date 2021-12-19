@@ -98,75 +98,66 @@ class DataHelperSingleFamily:
         max_family_size = 0
         for filename in filenames:
             print(f"Dataset: {filename}")
-            INPUT = open(filename, 'r')
+            with open(filename, 'r') as INPUT:
+                encoder_sequence_list = []
+                decoder_input_sequence_list = []
+                decoder_output_sequence_list = []
+                weight_list = []
 
-            encoder_sequence_list = []
-            decoder_input_sequence_list = []
-            decoder_output_sequence_list = []
-            weight_list = []
+                family_name = filename.rsplit('/', 1)[-1].rsplit('.', 1)[0]
+                family_name_list = family_name.split('_')
+                if len(family_name_list) >= 2:
+                    family_name = family_name_list[0] + '_' + family_name_list[1]
 
-            family_name = filename.rsplit('/', 1)[-1].rsplit('.', 1)[0]
-            family_name_list = family_name.split('_')
-            if len(family_name_list) >= 2:
-                family_name = family_name_list[0] + '_' + family_name_list[1]
+                print(f"Family: {family_name}")
 
-            print(f"Family: {family_name}")
+                family_size = 0
+                ind_family_idx_list = []
+                first_time = True
+                seq = ''
 
-            family_size = 0
-            ind_family_idx_list = []
-            first_time = True
-            seq = ''
+                # check if first sequence header has a sequence weight
+                line = 'start'
+                while line:
+                    line = INPUT.readline().rstrip()
+                    if line[0] == '>':
+                        break
+                try:
+                    weight = float(line.rsplit(':', 1)[-1])
+                    uniform_weights = False
+                except ValueError:
+                    print(f"No sequence weights detected: {line}\nUsing uniform weights.")
+                    uniform_weights = True
+                INPUT.seek(0)
 
-            # check if first sequence header has a sequence weight
-            line = 'start'
-            while line:
-                line = INPUT.readline().rstrip()
-                if line[0] == '>':
-                    break
-            try:
-                weight = float(line.rsplit(':', 1)[-1])
-                uniform_weights = False
-            except ValueError:
-                print(f"No sequence weights detected: {line}\nUsing uniform weights.")
-                uniform_weights = True
-            INPUT.seek(0)
+                for line in INPUT:
+                    line = line.rstrip()
 
-            for line in INPUT:
-                line = line.rstrip()
+                    if line != '':
+                        if line[0] == '>' and first_time:
+                            weight = 1.0 if uniform_weights else float(line.rsplit(':', 1)[-1])
+                            first_time = False
 
-                if line != '':
-                    if line[0] == '>' and first_time:
-                        weight = 1.0 if uniform_weights else float(line.rsplit(':', 1)[-1])
-                        first_time = False
+                        elif line[0] == '>':
+                            valid = all(letter in self.aa_dict for letter in seq)
+                            if valid:
+                                encoder_sequence_list.append(seq)
+                                decoder_input_sequence_list.append('*' + seq)
+                                decoder_output_sequence_list.append(seq + '*')
+                                ind_family_idx_list.append(family_size)
+                                weight_list.append(weight)
 
-                    elif line[0] == '>' and first_time is False:
-                        valid = True
-                        for letter in seq:
-                            if letter not in self.aa_dict:
-                                valid = False
-                        if valid:
-                            encoder_sequence_list.append(seq)
-                            decoder_input_sequence_list.append('*' + seq)
-                            decoder_output_sequence_list.append(seq + '*')
-                            ind_family_idx_list.append(family_size)
-                            weight_list.append(weight)
+                                family_size += 1
+                                if len(seq) > max_seq_len:
+                                    max_seq_len = len(seq)
 
-                            family_size += 1
-                            if len(seq) > max_seq_len:
-                                max_seq_len = len(seq)
+                            seq = ''
+                            weight = 1.0 if uniform_weights else float(line.rsplit(':', 1)[-1])
 
-                        seq = ''
-                        weight = 1.0 if uniform_weights else float(line.rsplit(':', 1)[-1])
+                        else:
+                            seq += line
 
-                    else:
-                        seq += line
-
-            INPUT.close()
-
-            valid = True
-            for letter in seq:
-                if letter not in self.aa_dict:
-                    valid = False
+            valid = all(letter in self.aa_dict for letter in seq)
             if valid:
                 encoder_sequence_list.append(seq)
                 decoder_input_sequence_list.append('*' + seq)
@@ -224,39 +215,36 @@ class DataHelperSingleFamily:
 
         for filename in glob.glob(self.working_dir + '/datasets/mutation_data/' + self.dataset + '*.csv'):
 
-            INPUT = open(filename, 'r')
+            with open(filename, 'r') as INPUT:
+                encoder_sequence_list = []
+                decoder_input_sequence_list = []
+                decoder_output_sequence_list = []
+                mutation_list = []
+                uppercase_list = []
+                measurement_list = []
 
-            encoder_sequence_list = []
-            decoder_input_sequence_list = []
-            decoder_output_sequence_list = []
-            mutation_list = []
-            uppercase_list = []
-            measurement_list = []
+                family_name_list = filename.split('/')[-1].split('_')
+                family_name = family_name_list[0] + '_' + family_name_list[1]
 
-            family_name_list = filename.split('/')[-1].split('_')
-            family_name = family_name_list[0] + '_' + family_name_list[1]
+                mutation_counter = 0
+                for i, line in enumerate(INPUT):
+                    line = line.rstrip()
+                    line_list = line.split(',')
+                    if i != 0:
+                        mutation, is_upper, measurement, sequence = line_list
 
-            mutation_counter = 0
-            for i, line in enumerate(INPUT):
-                line = line.rstrip()
-                line_list = line.split(',')
-                if i != 0:
-                    mutation, is_upper, measurement, sequence = line_list
+                        measurement = float(measurement)
+                        if np.isfinite(measurement):
+                            if is_upper == 'True':
+                                uppercase_list.append(mutation_counter)
+                            mutation_list.append(mutation)
+                            measurement_list.append(float(measurement))
 
-                    measurement = float(measurement)
-                    if np.isfinite(measurement):
-                        if is_upper == 'True':
-                            uppercase_list.append(mutation_counter)
-                        mutation_list.append(mutation)
-                        measurement_list.append(float(measurement))
-
-                        encoder_sequence_list.append(sequence)
-                        decoder_input_sequence_list.append('*' + sequence)
-                        decoder_output_sequence_list.append(sequence + '*')
-                        seq_len_mutations = len(sequence)
-                        mutation_counter += 1
-
-            INPUT.close()
+                            encoder_sequence_list.append(sequence)
+                            decoder_input_sequence_list.append('*' + sequence)
+                            decoder_output_sequence_list.append(sequence + '*')
+                            seq_len_mutations = len(sequence)
+                            mutation_counter += 1
 
             self.protein_mutation_names.append(family_name)
             self.protein_names_to_uppercase_idx[family_name] = np.asarray(uppercase_list)

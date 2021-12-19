@@ -26,12 +26,11 @@ class AWSUtility:
                 cmd[0] = AWS_BIN
             pipes = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='UTF-8')
             std_out, std_err = pipes.communicate()
-            if pipes.returncode != 0:
-                print(f"AWS CLI error: {pipes.returncode}")
-                print(std_err.strip())
-                return pipes.returncode, None, None
-            else:
+            if pipes.returncode == 0:
                 return 0, std_out, std_err
+            print(f"AWS CLI error: {pipes.returncode}")
+            print(std_err.strip())
+            return pipes.returncode, None, None
         except OSError:
             print("AWS CLI not found.")
             return 1, None, None

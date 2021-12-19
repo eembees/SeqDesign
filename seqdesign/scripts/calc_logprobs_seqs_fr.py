@@ -75,13 +75,16 @@ def main():
         grep_path = f'{sess_name}.ckpt-{ARGS.checkpoint}.*'
         sess_namedir = f"{working_dir}/sess/{sess_name}/{sess_name}.ckpt-{ARGS.checkpoint}"
 
-    if not glob.glob(glob_path) and aws_util:
-        if not aws_util.s3_get_file_grep(
+    if (
+        not glob.glob(glob_path)
+        and aws_util
+        and not aws_util.s3_get_file_grep(
             f'sess/{sess_name}',
             f'{working_dir}/sess/{sess_name}',
             grep_path,
-        ):
-            raise Exception("Could not download session files from S3.")
+        )
+    ):
+        raise Exception("Could not download session files from S3.")
 
     legacy_version = model.AutoregressiveFR.get_checkpoint_legacy_version(sess_namedir)
     dims = {'alphabet': len(data_helper.alphabet)}
